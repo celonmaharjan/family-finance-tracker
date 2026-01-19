@@ -27,11 +27,10 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     zip \
     unzip \
+    libpq-dev \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install gd pdo pdo_mysql pdo_pgsql
-
-# Set up Apache
-RUN a2enmod rewrite
+    && docker-php-ext-install gd pdo pdo_mysql pdo_pgsql \
+    && a2enmod rewrite
 COPY ./.docker/vhost.conf /etc/apache2/sites-available/000-default.conf
 
 # Copy application code and built assets
