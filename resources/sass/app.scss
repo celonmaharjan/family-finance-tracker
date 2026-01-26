@@ -1,8 +1,259 @@
-// Fonts
-@import url('https://fonts.bunny.net/css?family=Nunito');
+// Fonts & Icons
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import 'bootstrap-icons/font/bootstrap-icons.css';
 
-// Variables
-@import 'variables';
+// Variables - Modern FinTech Palette
+$font-family-sans-serif: 'Outfit', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+$primary: #6366f1; // Indigo-500
+$secondary: #64748b; // Slate-500
+$success: #10b981; // Emerald-500
+$danger: #ef4444; // Red-500
+$warning: #f59e0b; // Amber-500
+$info: #3b82f6; // Blue-500
+$light: #f8fafc; // Slate-50
+$dark: #0f172a; // Slate-900
 
-// Bootstrap
+$body-bg: #f1f5f9; // Slate-100
+$body-color: #334155; // Slate-700
+
+$border-radius: 1rem;
+$border-radius-lg: 1.5rem;
+$border-radius-sm: 0.5rem;
+
+$box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+$box-shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$box-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+
+// Bootstrap Overrides
 @import 'bootstrap/scss/bootstrap';
+
+//=================================================================
+// Modern FinTech Theme
+//=================================================================
+
+body {
+    background-color: $body-bg;
+    color: $body-color;
+    -webkit-font-smoothing: antialiased;
+}
+
+// Typography
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: $dark;
+    font-weight: 700;
+    letter-spacing: -0.025em;
+}
+
+// Navbar (Desktop)
+.navbar {
+    background-color: rgba(255, 255, 255, 0.8) !important;
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(226, 232, 240, 0.8);
+    box-shadow: $box-shadow-sm;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+
+    .navbar-brand {
+        font-weight: 800;
+        color: $primary !important;
+        letter-spacing: -0.025em;
+        font-size: 1.5rem;
+    }
+}
+
+// Cards
+.card {
+    border: none;
+    border-radius: $border-radius;
+    box-shadow: $box-shadow;
+    background: #fff;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    overflow: hidden;
+
+    &:hover {
+        transform: translateY(-2px);
+        box-shadow: $box-shadow-lg;
+    }
+
+    .card-header {
+        background-color: transparent;
+        border-bottom: 1px solid $gray-100;
+        padding: 1.25rem 1.5rem;
+
+        h4,
+        h5 {
+            margin-bottom: 0;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: $dark;
+        }
+    }
+
+    .card-body {
+        padding: 1.5rem;
+    }
+}
+
+// Stat Cards
+.bg-primary,
+.bg-secondary,
+.bg-danger,
+.bg-success,
+.bg-warning,
+.bg-info {
+    &.card {
+        color: white;
+
+        .text-muted {
+            color: rgba(255, 255, 255, 0.8) !important;
+        }
+    }
+}
+
+// Buttons
+.btn {
+    font-weight: 600;
+    padding: 0.625rem 1.25rem;
+    border-radius: 9999px; // Pill shape
+    transition: all 0.2s;
+
+    &-primary {
+        box-shadow: 0 4px 6px -1px rgba($primary, 0.3);
+
+        &:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 8px -1px rgba($primary, 0.4);
+        }
+    }
+}
+
+// Tables
+.table-responsive {
+    border-radius: $border-radius;
+    box-shadow: $box-shadow-sm;
+}
+
+.table {
+    margin-bottom: 0;
+
+    thead {
+        th {
+            background-color: $light;
+            border-bottom: 1px solid $gray-200;
+            color: $gray-500;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            padding: 1rem 1.5rem;
+            font-weight: 600;
+        }
+    }
+
+    tbody {
+        tr {
+            td {
+                padding: 1rem 1.5rem;
+                vertical-align: middle;
+                color: $body-color;
+                border-bottom: 1px solid $gray-100;
+                font-weight: 500;
+            }
+
+            &:last-child td {
+                border-bottom: none;
+            }
+
+            &:hover {
+                background-color: $light;
+            }
+        }
+    }
+}
+
+// Badges
+.badge {
+    padding: 0.5em 0.8em;
+    font-weight: 600;
+    border-radius: 0.375rem;
+}
+
+//=================================================================
+// Mobile Navigation
+//=================================================================
+
+// Add padding to body to prevent content being hidden behind bottom nav on mobile
+@include media-breakpoint-down(md) {
+    body {
+        padding-bottom: 80px;
+    }
+
+    .navbar {
+        // Sticky top on mobile for better UX
+        position: sticky;
+        top: 0;
+        z-index: 1020;
+    }
+
+    // Hide desktop navigation items on mobile
+    .navbar-collapse {
+        background: white;
+        padding: 1rem;
+        border-radius: $border-radius;
+        margin-top: 0.5rem;
+        box-shadow: $box-shadow-lg;
+    }
+}
+
+.bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid $gray-200;
+    padding: 0.75rem 0;
+    z-index: 1030;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.05);
+
+    .nav-item {
+        color: $gray-400;
+        text-decoration: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        font-size: 0.75rem;
+        font-weight: 500;
+        padding: 0.5rem;
+        border-radius: 0.75rem;
+        transition: all 0.2s ease;
+
+        i {
+            font-size: 1.5rem;
+            margin-bottom: 0.25rem;
+            transition: all 0.2s ease;
+        }
+
+        &.active {
+            color: $primary;
+            background-color: rgba($primary, 0.1);
+
+            i {
+                transform: translateY(-2px);
+            }
+        }
+
+        &:hover:not(.active) {
+            color: $gray-600;
+            background-color: $light;
+        }
+    }
+}

@@ -4,6 +4,7 @@ use App\Http\Controllers\AdminController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DepositController;
 use App\Http\Controllers\LoanController;
+use App\Http\Controllers\LanguageController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -36,18 +37,18 @@ Route::middleware(['auth'])->group(function () {
         Route::put('/users/{user}', [AdminController::class, 'updateUser'])->name('users.update');
         
         // Deposit Management
-        Route::get('/deposits/create', [AdminController::class, 'createDeposit'])->name('deposits.create');
         Route::post('/deposits', [AdminController::class, 'storeDeposit'])->name('deposits.store');
+        Route::patch('/users/{user}/deposit', [AdminController::class, 'updateUserDeposit'])->name('users.deposit.update');
 
         // Loan Management
-        Route::get('/loans/create', [AdminController::class, 'createLoan'])->name('loans.create');
         Route::post('/loans', [AdminController::class, 'storeLoan'])->name('loans.store');
+        Route::patch('/users/{user}/loan', [AdminController::class, 'updateUserLoan'])->name('users.loan.update');
+        Route::post('/loans/repay', [AdminController::class, 'repayLoan'])->name('loans.repay');
         
-        // Loan Payment Management
-        Route::get('/loan-payments/create', [AdminController::class, 'createLoanPayment'])->name('loan-payments.create');
-        Route::post('/loan-payments', [AdminController::class, 'storeLoanPayment'])->name('loan-payments.store');
-
         // Interest Distribution
         Route::post('/distribute-interest', [AdminController::class, 'distributeInterest'])->name('distribute-interest');
     });
 });
+
+// Language Switcher
+Route::get('language/{locale}', [LanguageController::class, 'switch'])->name('language.switch');

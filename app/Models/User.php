@@ -69,16 +69,32 @@ class User extends Authenticatable
 
     public function getTotalDepositedAmountAttribute()
     {
-        return $this->deposits()->sum('amount');
+        return $this->deposits->sum('amount');
     }
 
     public function getTotalWithdrawnAmountAttribute()
     {
-        return $this->loans()->sum('principal_amount');
+        return $this->loans->sum('principal_amount');
     }
 
     public function getOutstandingLoanBalanceAttribute()
     {
-        return $this->loans()->where('status', 'active')->sum('remaining_balance');
+        return $this->loans->where('status', 'active')->sum('remaining_balance');
+    }
+
+    public function getTotalInterestEarnedAttribute()
+    {
+        return $this->interestRecords->sum('amount');
+    }
+
+    /**
+     * Get the total interest accrued on active loans (12% annual / 1% monthly).
+     * This is the difference between what user owes now vs what they originally borrowed.
+     */
+    public function getLoanInterestAccruedAttribute()
+    {
+        $principalSum = $this->loans->where('status', 'active')->sum('principal_amount');
+        $remainingSum = $this->loans->where('status', 'active')->sum('remaining_balance');
+        return max(0, $remainingSum - $principalSum);
     }
 }

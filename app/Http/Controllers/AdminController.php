@@ -20,15 +20,64 @@ class AdminController extends Controller
         $this->financialService = $financialService;
     }
 
-    public function index()
+    public function index(Request $request)
     {
         $familyAccount = FamilyAccount::firstOrCreate([]);
         $totalJointBalance = $familyAccount->total_balance;
-        $totalOutstandingLoans = Loan::where('status', 'active')->sum('remaining_balance');
-        $totalInterestEarnedBySystem = InterestRecord::sum('amount');
-        $users = User::with('deposits', 'loans')->get();
+        
+        // Get available years from Deposits (database agnostic)
+        $availableYears = Deposit::pluck('date')
+                            ->map(function ($date) {
+                                return \Carbon\Carbon::parse($date)->year;
+                            })
+                            ->unique()
+                            ->sortDesc();
+        
+        if ($availableYears->isEmpty()) {
+            $availableYears = collect([date('Y')]);
+        }
+        
+        $selectedYear = $request->input('year');
 
-        return view('admin.index', compact('totalJointBalance', 'totalOutstandingLoans', 'totalInterestEarnedBySystem', 'users'));
+        // Total Outstanding is current, so all-time active loans
+        $totalOutstandingLoans = Loan::where('status', 'active')->sum('remaining_balance');
+        
+        // Interest Earned: Filter by year if selected
+        $interestQuery = InterestRecord::query();
+        if ($selectedYear) {
+            $interestQuery->whereYear('date', $selectedYear);
+        }
+        $totalInterestEarnedBySystem = $interestQuery->sum('amount');
+
+        // Eager load deposits, loans, and interestRecords (filtered by year if applicable)
+        $users = User::with([
+            'deposits' => function($query) use ($selectedYear) {
+                if ($selectedYear) {
+                    $query->whereYear('date', $selectedYear);
+                }
+            },
+            'loans',
+            'interestRecords' => function($query) use ($selectedYear) {
+                if ($selectedYear) {
+                    $query->whereYear('date', $selectedYear);
+                }
+            }
+        ])->get();
+
+        // Interest rates for display
+        $depositInterestRate = $familyAccount->interest_rate ?? 4.00;
+        $loanInterestRate = 12.00; // 12% annually = 1% monthly, as per applyMonthlyInterestToLoans()
+
+        return view('admin.index', compact(
+            'totalJointBalance', 
+            'totalOutstandingLoans', 
+            'totalInterestEarnedBySystem', 
+            'users', 
+            'availableYears', 
+            'selectedYear',
+            'depositInterestRate',
+            'loanInterestRate'
+        ));
     }
 
     public function createUser()
@@ -84,30 +133,29 @@ class AdminController extends Controller
         return redirect()->route('admin.dashboard')->with('success', 'User updated successfully.');
     }
 
-    public function createDeposit()
-    {
-        $users = User::where('role', 'member')->get();
-        return view('admin.deposits.create', compact('users'));
-    }
-
     public function storeDeposit(Request $request)
     {
         $request->validate([
             'user_id' => 'required|exists:users,id',
             'amount' => 'required|numeric|min:0.01',
-            'payment_method' => 'nullable|string|max:255',
         ]);
 
         $user = User::findOrFail($request->user_id);
-        $this->financialService->createDeposit($user, $request->amount, $request->payment_method);
+        $this->financialService->createDeposit($user, $request->amount);
 
-        return redirect()->route('admin.dashboard')->with('success', 'Deposit created successfully.');
+        return back()->with('success', 'Deposit created successfully.');
     }
 
-    public function createLoan()
+    public function updateUserDeposit(Request $request, User $user)
     {
-        $users = User::where('role', 'member')->get();
-        return view('admin.loans.create', compact('users'));
+        $request->validate([
+            'amount' => 'required|numeric|min:0',
+        ]);
+
+        $user->deposits()->delete();
+        $this->financialService->createDeposit($user, $request->amount);
+
+        return response()->json(['message' => 'Deposit updated successfully.']);
     }
 
     public function storeLoan(Request $request)
@@ -120,27 +168,34 @@ class AdminController extends Controller
         $user = User::findOrFail($request->user_id);
         $this->financialService->createWithdrawal($user, $request->amount);
 
-        return redirect()->route('admin.dashboard')->with('success', 'Loan created successfully.');
+        return back()->with('success', 'Loan created successfully.');
     }
     
-    public function createLoanPayment()
-    {
-        $loans = Loan::where('status', 'active')->get();
-        return view('admin.loan-payments.create', compact('loans'));
-    }
-
-    public function storeLoanPayment(Request $request)
+    public function updateUserLoan(Request $request, User $user)
     {
         $request->validate([
-            'loan_id' => 'required|exists:loans,id',
+            'amount' => 'required|numeric|min:0',
+        ]);
+        
+        $user->loans()->delete();
+        $this->financialService->createWithdrawal($user, $request->amount);
+
+        return response()->json(['message' => 'Loan updated successfully.']);
+    }
+
+    public function repayLoan(Request $request)
+    {
+        $request->validate([
+            'user_id' => 'required|exists:users,id',
             'amount' => 'required|numeric|min:0.01',
-            'payment_type' => 'required|in:principal,interest',
+            'payment_type' => 'required|in:principal,interest_only',
         ]);
 
-        $loan = Loan::findOrFail($request->loan_id);
+        $loan = Loan::where('user_id', $request->user_id)->where('status', 'active')->firstOrFail();
+        
         $this->financialService->makeLoanPayment($loan, $request->amount, $request->payment_type);
 
-        return redirect()->route('admin.dashboard')->with('success', 'Loan payment recorded successfully.');
+        return back()->with('success', 'Loan repayment processed successfully.');
     }
 
     public function distributeInterest()
