@@ -19,6 +19,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Register mail views
+        $this->loadViewsFrom(resource_path('views/emails'), 'mail');
     }
 }

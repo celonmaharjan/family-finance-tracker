@@ -8,23 +8,26 @@ use App\Models\InterestRecord;
 use App\Models\Loan;
 use App\Models\User;
 use App\Services\FinancialService;
+use App\Services\MailService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
 class AdminController extends Controller
 {
     protected $financialService;
+    protected $mailService;
 
-    public function __construct(FinancialService $financialService)
+    public function __construct(FinancialService $financialService, MailService $mailService)
     {
         $this->financialService = $financialService;
+        $this->mailService = $mailService;
     }
 
     public function index(Request $request)
     {
         $familyAccount = FamilyAccount::firstOrCreate([]);
         $totalJointBalance = $familyAccount->total_balance;
-        
+
         // Get available years from Deposits (database agnostic)
         $availableYears = Deposit::pluck('date')
                             ->map(function ($date) {
@@ -32,16 +35,16 @@ class AdminController extends Controller
                             })
                             ->unique()
                             ->sortDesc();
-        
+
         if ($availableYears->isEmpty()) {
             $availableYears = collect([date('Y')]);
         }
-        
+
         $selectedYear = $request->input('year');
 
         // Total Outstanding is current, so all-time active loans
         $totalOutstandingLoans = Loan::where('status', 'active')->sum('remaining_balance');
-        
+
         // Interest Earned: Filter by year if selected
         $interestQuery = InterestRecord::query();
         if ($selectedYear) {
@@ -69,11 +72,11 @@ class AdminController extends Controller
         $loanInterestRate = 12.00; // 12% annually = 1% monthly, as per applyMonthlyInterestToLoans()
 
         return view('admin.index', compact(
-            'totalJointBalance', 
-            'totalOutstandingLoans', 
-            'totalInterestEarnedBySystem', 
-            'users', 
-            'availableYears', 
+            'totalJointBalance',
+            'totalOutstandingLoans',
+            'totalInterestEarnedBySystem',
+            'users',
+            'availableYears',
             'selectedYear',
             'depositInterestRate',
             'loanInterestRate'
@@ -94,14 +97,21 @@ class AdminController extends Controller
             'role' => 'required|in:admin,member',
         ]);
 
-        User::create([
+        $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role' => $request->role,
         ]);
 
-        return redirect()->route('admin.dashboard')->with('success', 'User created successfully.');
+        // Send welcome email
+        try {
+            $this->mailService->sendWelcomeMail($user);
+        } catch (\Exception $e) {
+            \Log::error('Failed to send welcome email to ' . $user->email . ': ' . $e->getMessage());
+        }
+
+        return redirect()->route('admin.dashboard')->with('success', 'User created successfully. Welcome email sent.');
     }
 
     public function editUser(User $user)
@@ -170,13 +180,13 @@ class AdminController extends Controller
 
         return back()->with('success', 'Loan created successfully.');
     }
-    
+
     public function updateUserLoan(Request $request, User $user)
     {
         $request->validate([
             'amount' => 'required|numeric|min:0',
         ]);
-        
+
         $user->loans()->delete();
         $this->financialService->createWithdrawal($user, $request->amount);
 
@@ -192,7 +202,7 @@ class AdminController extends Controller
         ]);
 
         $loan = Loan::where('user_id', $request->user_id)->where('status', 'active')->firstOrFail();
-        
+
         $this->financialService->makeLoanPayment($loan, $request->amount, $request->payment_type);
 
         return back()->with('success', 'Loan repayment processed successfully.');
